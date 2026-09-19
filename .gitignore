@@ -1,0 +1,25 @@
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Environment variables / secrets
+.env
+
+# Logs
+logs/
+
+# IDE files
+.vscode/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Raw dataset
+data/raw/
+
+# Generated processed data
+data/processed/
