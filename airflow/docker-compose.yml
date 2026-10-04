@@ -1,0 +1,76 @@
+services:
+  airflow-db:
+    image: postgres:18
+    container_name: jobpulse-airflow-db
+    env_file:
+      - .env
+    volumes:
+      - airflow_postgres_data:/var/lib/postgresql
+
+  airflow-init:
+    image: jobpulse-airflow:3.1.0
+    container_name: jobpulse-airflow-init
+    restart: "no"
+    depends_on:
+      - airflow-db
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow_dev@airflow-db:5432/airflow
+    command: >
+      airflow db migrate
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+
+  airflow-scheduler:
+    image: jobpulse-airflow:3.1.0
+    container_name: jobpulse-airflow-scheduler
+    depends_on:
+      - airflow-db
+      - airflow-init
+    env_file:
+      - .env
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow_dev@airflow-db:5432/airflow
+      AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-api-server:8080/execution/
+      AIRFLOW__CORE__STORE_RENDERED_TI_FIELDS: "False"
+    command: airflow scheduler
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+
+  airflow-dag-processor:
+    image: jobpulse-airflow:3.1.0
+    container_name: jobpulse-airflow-dag-processor
+    depends_on:
+      - airflow-db
+      - airflow-init
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow_dev@airflow-db:5432/airflow
+    command: airflow dag-processor
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+
+  airflow-api-server:
+    image: jobpulse-airflow:3.1.0
+    container_name: jobpulse-airflow-api-server
+    depends_on:
+      - airflow-db
+      - airflow-init
+    env_file:
+      - .env
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow_dev@airflow-db:5432/airflow
+    command: airflow api-server --host 0.0.0.0 --port 8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+
+volumes:
+  airflow_postgres_data:
