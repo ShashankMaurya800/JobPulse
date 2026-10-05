@@ -1,11 +1,18 @@
 from datetime import datetime
+import subprocess
 
 from airflow.sdk import DAG
 from airflow.providers.standard.operators.python import PythonOperator
 
 
-def start_pipeline():
-    print("JobPulse pipeline started successfully.")
+PROJECT_ROOT = "/opt/airflow/project"
+
+
+def run_script(script_name):
+    subprocess.run(
+        ["python", f"{PROJECT_ROOT}/src/{script_name}"],
+        check=True,
+    )
 
 
 with DAG(
@@ -16,7 +23,29 @@ with DAG(
     tags=["jobpulse", "data-engineering"],
 ) as dag:
 
-    start = PythonOperator(
-        task_id="start_pipeline",
-        python_callable=start_pipeline,
+    ingestion = PythonOperator(
+        task_id="ingestion",
+        python_callable=lambda: run_script("ingestion.py"),
     )
+
+    cleaning = PythonOperator(
+        task_id="cleaning",
+        python_callable=lambda: run_script("cleaning.py"),
+    )
+
+    transformation = PythonOperator(
+        task_id="transformation",
+        python_callable=lambda: run_script("transformation.py"),
+    )
+
+    validation = PythonOperator(
+        task_id="validation",
+        python_callable=lambda: run_script("validation.py"),
+    )
+
+    load = PythonOperator(
+        task_id="load",
+        python_callable=lambda: run_script("load_data.py"),
+    )
+
+    ingestion >> cleaning >> transformation >> validation >> load
